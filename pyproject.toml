@@ -1,5 +1,5 @@
 [build-system]
-requires = [ "setuptools" ]
+requires = [ "setuptools", "grpcio-tools ~= 1.68.1" ]
 build-backend = "setuptools.build_meta"
 
 
@@ -10,9 +10,9 @@ version = "0.0.0"
 requires-python = ">=3.10"
 
 dependencies = [
-    "grpcio-tools ~= 1.68.1",  # grpcio-tools requires grpcio
+    "grpcio ~= 1.68.1"
 ]
 
 
 [tool.setuptools]
-packages = ["messenger"]
+packages = [ "messenger_grpc" ]

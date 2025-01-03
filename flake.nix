@@ -51,7 +51,7 @@
           # NOTE: to generate python lock file, run:
           #   nix run .#pyprojectMessengerGrpc.lock
           packages = {
-            pyprojectMessengerGrpc = inputs.dream2nix.lib.evalModules {
+            pymessenger-grpc = inputs.dream2nix.lib.evalModules {
               packageSets.nixpkgs = pkgs';
               modules = [
                 ./pyproject.nix
@@ -67,7 +67,7 @@
           devShells.default = pkgs'.mkShell {
             name = "messenger-grpc";
 
-            inputsFrom = [ packages.pyprojectMessengerGrpc.devShell ];
+            inputsFrom = [ packages.pymessenger-grpc.devShell ];
 
             # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/273875
             nativeBuildInputs =
@@ -101,6 +101,10 @@
                   cmake --preset debug && cmake --build build/Debug
                   ctest --test-dir build/Debug --output-on-failure
                 '';
+                helperGP = pkgs'.writeShellScriptBin "GP" ''
+                  if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
+                  python3 -m grpc_tools.protoc --proto_path=proto --python_out=messenger_grpc proto/*.proto
+                '';
 
                 debugTools = (with pkgs'; if stdenv.isLinux then [ gdb ] else [ lldb ]);
               in
@@ -110,6 +114,7 @@
                 helperB
                 helperD
                 helperT
+                helperGP
               ] ++ debugTools;
 
             hardeningDisable = [ "fortify" ];

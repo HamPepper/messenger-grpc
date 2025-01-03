@@ -9,6 +9,7 @@ result
 __pycache__
 __pypackages__
 *.egg-info
+messenger_grpc/*_pb2.py
 
 .cache
 .ccls-cache
