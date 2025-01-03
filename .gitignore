@@ -1,11 +1,21 @@
 # misc
 .DS_Store
 
+
 # dev folders
 build
+result
+
+__pypackages__
+*.egg-info
+
 .cache
 .ccls-cache
+.dream2nix
+
 
 # dev files
 compile_commands.json
+
 .pre-commit-config.yaml
+.pdm-python

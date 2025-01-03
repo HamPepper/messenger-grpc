@@ -1,0 +1,14 @@
+[build-system]
+requires = [ "setuptools" ]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "messenger_grpc"
+version = "0.0.0"
+
+requires-python = ">=3.10"
+
+dependencies = [
+    "grpcio-tools ~= 1.68.1",  # grpcio-tools requires grpcio
+]

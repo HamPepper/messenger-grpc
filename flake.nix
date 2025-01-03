@@ -7,6 +7,9 @@
 
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+
+    dream2nix.url = "github:nix-community/dream2nix";
+    dream2nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = { self, nixpkgs, flake-parts, git-hooks, ... } @ inputs:
@@ -15,10 +18,10 @@
         git-hooks.flakeModule
       ];
 
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = [ "x86_64-linux" /* "x86_64-darwin" */ "aarch64-darwin" ];
 
       perSystem =
-        { system, inputs', pkgs', config, lib, ... }: {
+        { system, inputs', pkgs', config, lib, ... }: rec {
           _module.args.pkgs' = import nixpkgs { inherit system; };
 
           pre-commit = {
@@ -41,11 +44,30 @@
                 };
               editorconfig-checker.enable = true;
               nixpkgs-fmt.enable = true;
+              black.enable = true;
+            };
+          };
+
+          # NOTE: to generate python lock file, run:
+          #   nix run .#pyprojectMessengerGrpc.lock
+          packages = {
+            pyprojectMessengerGrpc = inputs.dream2nix.lib.evalModules {
+              packageSets.nixpkgs = pkgs';
+              modules = [
+                ./pyproject.nix
+                {
+                  paths.projectRoot = ./.;
+                  paths.projectRootFile = "flake.nix";
+                  paths.package = ./.;
+                }
+              ];
             };
           };
 
           devShells.default = pkgs'.mkShell {
             name = "messenger-grpc";
+
+            inputsFrom = [ packages.pyprojectMessengerGrpc.devShell ];
 
             # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/273875
             nativeBuildInputs =
@@ -65,11 +87,6 @@
 
             buildInputs =
               let
-                python = pkgs'.python3;
-                pythonPackages = with python.pkgs; [
-                  grpcio-tools
-                ];
-
                 helperB = pkgs'.writeShellScriptBin "B" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
                   cmake --preset debug && cmake --build build/Debug
@@ -93,7 +110,7 @@
                 helperB
                 helperD
                 helperT
-              ] ++ debugTools ++ pythonPackages;
+              ] ++ debugTools;
 
             hardeningDisable = [ "fortify" ];
 
