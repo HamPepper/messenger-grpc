@@ -1,0 +1,11 @@
+# misc
+.DS_Store
+
+# dev folders
+build
+.cache
+.ccls-cache
+
+# dev files
+compile_commands.json
+.pre-commit-config.yaml
