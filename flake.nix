@@ -122,7 +122,6 @@
             shellHook = ''
               ${config.pre-commit.installationScript}
               export PATH=$(pwd)/build/Debug:$PATH
-              export ASAN_OPTIONS=detect_leaks=0
             '';
           };
         };
