@@ -107,6 +107,7 @@
                     --proto_path=proto \
                     --python_out=messenger_grpc \
                     --grpc_python_out=messenger_grpc \
+                    --pyi_out=messenger_grpc \
                     proto/*.proto
                 '';
 
