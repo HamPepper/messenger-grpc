@@ -38,6 +38,7 @@ class CustomCommand(Command):
                 "grpc_tools.protoc",
                 f"--proto_path={self.proto_msgs_path}",
                 f"--python_out={output_dir}",
+                f"--grpc_python_out={output_dir}",
                 *self.get_source_files(),
             ]
             subprocess.call(protoc_call)

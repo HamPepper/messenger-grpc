@@ -103,7 +103,11 @@
                 '';
                 helperGP = pkgs'.writeShellScriptBin "GP" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  python3 -m grpc_tools.protoc --proto_path=proto --python_out=messenger_grpc proto/*.proto
+                  python3 -m grpc_tools.protoc \
+                    --proto_path=proto \
+                    --python_out=messenger_grpc \
+                    --grpc_python_out=messenger_grpc \
+                    proto/*.proto
                 '';
 
                 debugTools = (with pkgs'; if stdenv.isLinux then [ gdb ] else [ lldb ]);
