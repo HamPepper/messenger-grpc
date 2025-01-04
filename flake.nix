@@ -126,7 +126,7 @@
 
             shellHook = ''
               ${config.pre-commit.installationScript}
-              export PATH=$(pwd)/build/Debug:$PATH
+              export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$PATH
             '';
           };
         };

@@ -27,6 +27,12 @@ in
 
   buildPythonPackage = {
     pyproject = true;
+    pythonImportsCheck = [
+      "messenger_grpc"
+      "messenger_grpc.server"
+      "messenger_grpc.chat_service_pb2"
+      "messenger_grpc.chat_service_pb2_grpc"
+    ];
   };
 
   paths.lockFile = "lock.${config.deps.stdenv.system}.json";
