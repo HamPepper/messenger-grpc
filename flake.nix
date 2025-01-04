@@ -105,10 +105,10 @@
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
                   python3 -m grpc_tools.protoc \
                     --proto_path=proto \
-                    --python_out=messenger_grpc \
-                    --grpc_python_out=messenger_grpc \
-                    --pyi_out=messenger_grpc \
-                    proto/*.proto
+                    --python_out=. \
+                    --grpc_python_out=. \
+                    --pyi_out=. \
+                    proto/messenger_grpc/*.proto
                 '';
 
                 debugTools = (with pkgs'; if stdenv.isLinux then [ gdb ] else [ lldb ]);
@@ -126,7 +126,7 @@
 
             shellHook = ''
               ${config.pre-commit.installationScript}
-              export PATH=$(pwd)/build/Debug:$PATH
+              export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$PATH
             '';
           };
         };

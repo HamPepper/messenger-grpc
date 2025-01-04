@@ -20,7 +20,7 @@ class CustomCommand(Command):
 
     def get_source_files(self) -> "list[str]":
         if self.proto_msgs_path.is_dir():  # type: ignore
-            return [str(path) for path in self.proto_msgs_path.glob("*.proto")]  # type: ignore
+            return [str(path) for path in self.proto_msgs_path.rglob("*.proto")]  # type: ignore
         else:
             return []
 
@@ -29,8 +29,9 @@ class CustomCommand(Command):
             print(f"gRPC proto files are located in: {self.proto_msgs_path}")
 
             # create package structure
-            output_dir = self.bdist_dir / self.pkg_name  # type: ignore
+            output_dir = self.bdist_dir  # type: ignore
             output_dir.mkdir(parents=True, exist_ok=True)
+
             # generate python classes
             protoc_call = [
                 "python3",

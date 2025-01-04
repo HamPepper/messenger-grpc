@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package chat_service;
+
+
+service ChatService {
+  // connects a client to a room
+  rpc connect (ConnectRequest) returns (ConnectResponse);
+
+  // disconnects a client from a room
+  rpc disconnect (DisconnectRequest) returns (Empty);
+
+  // sends a message to the server
+  rpc sendMessage (ChatMessage) returns (Empty);
+
+  // stream of messages from the server
+  rpc receiveMessages (ChatRoom) returns (stream ChatMessage);
+}
+
+message ConnectRequest {
+  string room = 1;
+  string user = 2;
+}
+
+message ConnectResponse {
+  string message = 1;
+}
+
+message DisconnectRequest {
+  string room = 1;
+  string user = 2;
+}
+
+message ChatMessage {
+  string room = 1;
+  string user = 2;
+  string message = 3;
+}
+
+message ChatRoom {
+  string room = 1;
+}
+
+message Empty {}

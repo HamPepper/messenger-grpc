@@ -1,26 +1,47 @@
-import grpc
+from time import sleep
 
-import messenger_grpc.messenger_grpc_pb2 as mgp_structs
-import messenger_grpc.messenger_grpc_pb2_grpc as mgp_services
-
-from concurrent import futures
+from . import chat_service_pb2 as cs_structs
+from . import chat_service_pb2_grpc as cs_services
 
 
-class Greeter(mgp_services.GreeterServicer):
-    def greet(self, request, context):
-        message = f"Hello, {request.name}!"
-        print(f"Sent: {message}")
-        return mgp_structs.GreetReply(message=message)
+class ChatServer(cs_services.ChatServiceServicer):
+    def __init__(self):
+        self.rooms = {}
+        self.clients = {}
 
+    def connect(self, request, context):
+        room = request.room
+        user = request.user
+        if room not in self.rooms:
+            self.rooms[room] = []
+        if room not in self.clients:
+            self.clients[room] = set()
+        self.clients[room].add(user)
+        return cs_structs.ConnectResponse(message=f"{user} connected to room {room}")
 
-def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    mgp_services.add_GreeterServicer_to_server(Greeter(), server)
-    server.add_insecure_port("[::]:50051")
-    server.start()
-    print("Server started, listening on port 50051")
-    server.wait_for_termination()
+    def disconnect(self, request, context):
+        room = request.room
+        user = request.user
+        if room in self.clients:
+            self.clients[room].discard(user)
+        return cs_structs.Empty()
 
+    def sendMessage(self, request, context):
+        room = request.room
+        if room not in self.rooms:
+            self.rooms[room] = []
+        self.rooms[room].append(request)
+        return cs_structs.Empty()
 
-if __name__ == "__main__":
-    serve()
+    def receiveMessages(self, request, context):
+        room = request.room
+        if room not in self.rooms:
+            self.rooms[room] = []
+
+        last_index = 0
+        while True:
+            while len(self.rooms[room]) > last_index:
+                message = self.rooms[room][last_index]
+                last_index += 1
+                yield message
+            sleep(0.1)  # to prevent CPU overload

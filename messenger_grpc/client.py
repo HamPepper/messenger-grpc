@@ -1,15 +1,24 @@
-import grpc
-
-import messenger_grpc.messenger_grpc_pb2 as mgp_structs
-import messenger_grpc.messenger_grpc_pb2_grpc as mgp_services
+from . import chat_service_pb2 as cs_structs
+from . import chat_service_pb2_grpc as cs_services
 
 
-def run():
-    with grpc.insecure_channel("localhost:50051") as channel:
-        stub = mgp_services.GreeterStub(channel)
-        response = stub.greet(mgp_structs.GreetRequest(name="World"))
-    print(f"Greeter client received: {response.message}")
+class ChatClient:
+    def connect(self, stub, user, room):
+        connect_request = cs_structs.ConnectRequest(room=room, user=user)
+        response = stub.connect(connect_request)
+        print(response.message)
 
+    def disconnect(self, stub, user, room):
+        disconnect_request = cs_structs.DisconnectRequest(room=room, user=user)
+        stub.disconnect(disconnect_request)
 
-if __name__ == "__main__":
-    run()
+    def sendMessage(self, stub, user, room):
+        while True:
+            message = input("> ")
+            chat_message = cs_structs.ChatMessage(room=room, user=user, message=message)
+            stub.sendMessage(chat_message)
+
+    def receiveMessages(self, stub, room):
+        chat_room = cs_structs.ChatRoom(room=room)
+        for message in stub.receiveMessages(chat_room):
+            print(f"{message.user} in {message.room}: {message.message}")
