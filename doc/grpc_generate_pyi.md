@@ -28,7 +28,8 @@ python3 -m grpc_tools.protoc \
     --proto_path=. \
     --python_out=. \
     --grpc_python_out=. \
-    ./messenger_grpc.proto
+    ./package_name/messenger_grpc.proto
+    # ^上面的文件夹结构是必要的。这是为了能正确地生成 Python import 语句
 ```
 
 此时会生成如下2个文件：
@@ -60,7 +61,7 @@ python3 -m grpc_tools.protoc \
     --python_out=. \
     --grpc_python_out=. \
     --pyi_out=. \  # 生成类型信息 .pyi 文件
-    ./messenger_grpc.proto
+    ./package_name/messenger_grpc.proto
 ```
 
 
