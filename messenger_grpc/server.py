@@ -1,4 +1,4 @@
-from asyncio import sleep
+from asyncio import Event
 
 from . import chat_service_pb2 as cs_structs
 from . import chat_service_pb2_grpc as cs_services
@@ -8,6 +8,8 @@ class ChatServer(cs_services.ChatServiceServicer):
     def __init__(self):
         self.rooms = {}
         self.clients = {}  # key: room id, val: set of clients in that room
+
+        self.new_message_event = Event()
 
     async def connect(self, request, context):
         """
@@ -33,6 +35,7 @@ class ChatServer(cs_services.ChatServiceServicer):
         user = request.user
         if room in self.clients:
             self.clients[room].discard(user)
+
         return cs_structs.Empty()
 
     async def sendMessage(self, request, context):
@@ -42,7 +45,9 @@ class ChatServer(cs_services.ChatServiceServicer):
         room = request.room
         if room not in self.rooms:
             self.rooms[room] = []
+
         self.rooms[room].append(request)
+        self.new_message_event.set()
         return cs_structs.Empty()
 
     async def receiveMessages(self, request, context):
@@ -59,4 +64,5 @@ class ChatServer(cs_services.ChatServiceServicer):
                 message = self.rooms[room][last_index]
                 last_index += 1
                 yield message
-            await sleep(0.01)
+            await self.new_message_event.wait()
+            self.new_message_event.clear()
