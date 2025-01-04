@@ -10,6 +10,9 @@ class ChatServer(cs_services.ChatServiceServicer):
         self.clients = {}
 
     def connect(self, request, context):
+        """
+        client connects to server
+        """
         room = request.room
         user = request.user
         if room not in self.rooms:
@@ -20,6 +23,9 @@ class ChatServer(cs_services.ChatServiceServicer):
         return cs_structs.ConnectResponse(message=f"{user} connected to room {room}")
 
     def disconnect(self, request, context):
+        """
+        client disconnects from server
+        """
         room = request.room
         user = request.user
         if room in self.clients:
@@ -27,6 +33,9 @@ class ChatServer(cs_services.ChatServiceServicer):
         return cs_structs.Empty()
 
     def sendMessage(self, request, context):
+        """
+        client sends a message to server
+        """
         room = request.room
         if room not in self.rooms:
             self.rooms[room] = []
@@ -34,6 +43,9 @@ class ChatServer(cs_services.ChatServiceServicer):
         return cs_structs.Empty()
 
     def receiveMessages(self, request, context):
+        """
+        client receives messages from server
+        """
         room = request.room
         if room not in self.rooms:
             self.rooms[room] = []
