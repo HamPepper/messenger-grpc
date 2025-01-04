@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
 
-import grpc
+import asyncio
+import signal
 
-from concurrent import futures
+from grpc.experimental import aio
 
 from messenger_grpc import ChatServer
 from messenger_grpc import chat_service_pb2_grpc as cs_services
 
 
 class Server:
-    def __init__(self, ip="::", port=23333):
-        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        cs_services.add_ChatServiceServicer_to_server(ChatServer(), self.server)
-
+    def __init__(self, ip="0.0.0.0", port=23333):
         self.ip = ip
         self.port = port
-        self.server.add_insecure_port(f"[{ip}]:{port}")
 
-    def serve(self):
-        print(f"Listening on {self.ip} : {self.port}")
+    async def serve(self):
+        server = aio.server()
+        cs_services.add_ChatServiceServicer_to_server(ChatServer(), server)
+        server.add_insecure_port(f"{self.ip}:{self.port}")
 
-        self.server.start()
-        self.server.wait_for_termination()
+        loop = asyncio.get_event_loop()
+        for sig in [signal.SIGINT, signal.SIGTERM]:
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(server.stop(2)))
+
+        print(f"Listening on {self.ip}:{self.port}")
+        await server.start()
+        await server.wait_for_termination()
 
 
 if __name__ == "__main__":
     server = Server()
-    server.serve()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(server.serve())
+    loop.run_until_complete(loop.shutdown_asyncgens())
+    # ^ensure all async generators are closed
+    loop.close()
