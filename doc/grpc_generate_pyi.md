@@ -1,11 +1,11 @@
 # gRPC 生成 `.pyi` 类型信息文件
 
-考虑 `messenger_grpc.proto`：
+考虑 `package_name/greet_service.proto`：
 
 ```protobuf
 syntax = "proto3";
 
-package messenger_grpc;
+package greet_service;
 
 
 service Greeter {
@@ -28,15 +28,15 @@ python3 -m grpc_tools.protoc \
     --proto_path=. \
     --python_out=. \
     --grpc_python_out=. \
-    ./package_name/messenger_grpc.proto
+    ./package_name/greet_service.proto
     # ^上面的文件夹结构是必要的。这是为了能正确地生成 Python import 语句
 ```
 
 此时会生成如下2个文件：
 
 ```
-messenger_grpc_pb2_grpc.py
-messenger_grpc_pb2.py
+package_name/greet_service_pb2_grpc.py
+package_name/greet_service_pb2.py
 ```
 
 老版本的 gRPC 会把 `messege` 结构体的定义直接明文写入 `messenger_grpc_pb2.py`：
@@ -61,7 +61,7 @@ python3 -m grpc_tools.protoc \
     --python_out=. \
     --grpc_python_out=. \
     --pyi_out=. \  # 生成类型信息 .pyi 文件
-    ./package_name/messenger_grpc.proto
+    ./package_name/greet_service.proto
 ```
 
 

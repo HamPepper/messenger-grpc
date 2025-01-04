@@ -1,7 +1,7 @@
 from time import sleep
 
-from . import messenger_grpc_pb2 as mgp_structs
-from . import messenger_grpc_pb2_grpc as mgp_services
+from . import chat_service_pb2 as mgp_structs
+from . import chat_service_pb2_grpc as mgp_services
 
 
 class ChatServer(mgp_services.ChatServiceServicer):

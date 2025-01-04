@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package messenger_grpc;
+package chat_service;
 
 
 service ChatService {
