@@ -36,6 +36,8 @@ class Client:
                 while True:
                     sleep(1)
             except KeyboardInterrupt:
+                pass
+            finally:
                 self.client.disconnect(stub, user, room)
                 print(f"{user} disconnected from room {room}")
 
