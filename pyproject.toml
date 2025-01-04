@@ -16,5 +16,8 @@ dependencies = [
 
 [tool.setuptools]
 packages = [ "messenger_grpc" ]
-script-files = [ "scripts/pyserver.py"]
+script-files = [
+    "scripts/pyserver.py",
+    "scripts/pyclient.py",
+]
 
