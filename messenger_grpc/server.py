@@ -44,4 +44,4 @@ class ChatServer(cs_services.ChatServiceServicer):
                 message = self.rooms[room][last_index]
                 last_index += 1
                 yield message
-            sleep(1)
+            sleep(0.1)  # to prevent CPU overload
