@@ -3,7 +3,7 @@
 import asyncio
 import signal
 
-from grpc.experimental import aio
+from grpc import aio
 
 from messenger_grpc import ChatServer
 from messenger_grpc import chat_service_pb2_grpc as cs_services
