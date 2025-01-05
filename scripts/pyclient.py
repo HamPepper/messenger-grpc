@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import threading
+import asyncio
+import signal
 
-import grpc
-
-from time import sleep
+from grpc import aio
 
 from messenger_grpc import ChatClient
 from messenger_grpc import chat_service_pb2_grpc as cs_service
@@ -14,34 +13,46 @@ class Client:
     def __init__(self, ip="localhost", port=23333):
         self.ip = ip
         self.port = port
-        self.client = ChatClient()
 
-    def run(self):
-        with grpc.insecure_channel(f"{self.ip}:{self.port}") as channel:
+    async def run(self):
+        client = ChatClient()
+
+        async with aio.insecure_channel(f"{self.ip}:{self.port}") as channel:
             stub = cs_service.ChatServiceStub(channel)
 
             user = input("Enter your username: ")
             room = input("Enter the chat room: ")
 
-            self.client.connect(stub, user, room)
+            await client.connect(stub, user, room)
 
-            threading.Thread(
-                target=self.client.sendMessage, args=(stub, user, room)
-            ).start()
-            threading.Thread(
-                target=self.client.receiveMessages, args=(stub, room)
-            ).start()
+            send_task = asyncio.create_task(client.sendMessage(stub, user, room))
+            receive_task = asyncio.create_task(client.receiveMessages(stub, room))
+
+            stop_event = asyncio.Event()
+
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, lambda: stop_event.set())
 
             try:
-                while True:
-                    sleep(1)
-            except KeyboardInterrupt:
-                pass
+                await stop_event.wait()
             finally:
-                self.client.disconnect(stub, user, room)
-                print(f"{user} disconnected from room {room}")
+                send_task.cancel()
+                receive_task.cancel()
+                await asyncio.gather(send_task, receive_task, return_exceptions=True)
+                await client.disconnect(stub, user, room)
 
 
 if __name__ == "__main__":
     client = Client()
-    client.run()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(client.run())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
