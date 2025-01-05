@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
+import aioconsole
 import signal
 
 from grpc import aio
@@ -14,32 +15,48 @@ class Client:
         self.ip = ip
         self.port = port
 
+        self.incoming_messages = asyncio.Queue()
+        self.stop_event = asyncio.Event()
+
+    async def handleInput(self, client, stub, user, room):
+        while not self.stop_event.is_set():
+            user_input = await aioconsole.ainput()
+            await client.sendMessage(stub, user, room, user_input)
+
+    async def handleOutput(self, stub, user, room):
+        while not self.stop_event.is_set():
+            message = await self.incoming_messages.get()
+            print(f"[{message.user} - {message.room}]: {message.message}")
+
     async def run(self):
-        client = ChatClient()
+        client = ChatClient(self.incoming_messages)
+        user = input("Enter your username: ")
+        room = input("Enter room name: ")
 
         async with aio.insecure_channel(f"{self.ip}:{self.port}") as channel:
             stub = cs_service.ChatServiceStub(channel)
 
-            user = input("Enter your username: ")
-            room = input("Enter the chat room: ")
-
             await client.connect(stub, user, room)
+            if not (client.ok):
+                return
 
-            send_task = asyncio.create_task(client.sendMessage(stub, user, room))
             receive_task = asyncio.create_task(client.receiveMessages(stub, room))
-
-            stop_event = asyncio.Event()
+            input_task = asyncio.create_task(self.handleInput(client, stub, user, room))
+            output_task = asyncio.create_task(self.handleOutput(stub, user, room))
 
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
-                loop.add_signal_handler(sig, lambda: stop_event.set())
+                loop.add_signal_handler(sig, lambda: self.stop_event.set())
 
             try:
-                await stop_event.wait()
+                await self.stop_event.wait()
             finally:
-                send_task.cancel()
                 receive_task.cancel()
-                await asyncio.gather(send_task, receive_task, return_exceptions=True)
+                input_task.cancel()
+                output_task.cancel()
+                await asyncio.gather(
+                    receive_task, input_task, output_task, return_exceptions=True
+                )
                 await client.disconnect(stub, user, room)
 
 

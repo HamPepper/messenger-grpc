@@ -1,10 +1,11 @@
-import asyncio
-import aioconsole
-
 from . import chat_service_pb2 as cs_structs
 
 
 class ChatClient:
+    def __init__(self, queue):
+        self.queue = queue
+        self.ok = True
+
     async def connect(self, stub, user, room):
         connect_request = cs_structs.ConnectRequest(room=room, user=user)
         try:
@@ -12,6 +13,7 @@ class ChatClient:
             print(response.message)
         except Exception as e:
             print(f"Error: {e}")
+            self.ok = False
 
     async def disconnect(self, stub, user, room):
         disconnect_request = cs_structs.DisconnectRequest(room=room, user=user)
@@ -20,25 +22,22 @@ class ChatClient:
             print(f"{user} disconnected from {room}")
         except Exception as e:
             print(f"Error: {e}")
+            self.ok = False
 
-    async def sendMessage(self, stub, user, room):
-        while True:
-            try:
-                message = await aioconsole.ainput("> ")
-                chat_message = cs_structs.ChatMessage(
-                    room=room, user=user, message=message
-                )
-                await stub.sendMessage(chat_message)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                print(f"Error: {e}")
-                break
+    async def sendMessage(self, stub, user, room, text):
+        try:
+            chat_message = cs_structs.ChatMessage(room=room, user=user, message=text)
+            await stub.sendMessage(chat_message)
+        except Exception as e:
+            print(f"Error: {e}")
+            self.ok = False
 
     async def receiveMessages(self, stub, room):
         chat_room = cs_structs.ChatRoom(room=room)
         try:
+            # the for loop below represents streaming
             async for message in stub.receiveMessages(chat_room):
-                print(f"{message.user} in {message.room}: {message.message}")
+                await self.queue.put(message)
         except Exception as e:
             print(f"Error: {e}")
+            self.ok = False
