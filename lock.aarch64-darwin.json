@@ -1,6 +1,13 @@
 {
   "fetchPipMetadata": {
     "sources": {
+      "aioconsole": {
+        "is_direct": false,
+        "sha256": "e1023685cde35dde909fbf00631ffb2ed1c67fe0b7058ebb0892afbde5f213e5",
+        "type": "url",
+        "url": "https://files.pythonhosted.org/packages/fa/ea/23e756ec1fea0c685149304dda954b3b3932d6d06afbf42a66a2e6dc2184/aioconsole-0.8.1-py3-none-any.whl",
+        "version": "0.8.1"
+      },
       "grpcio": {
         "is_direct": false,
         "sha256": "3aed6544e4d523cd6b3119b0916cef3d15ef2da51e088211e4d1eb91a6c7f4f1",
@@ -32,6 +39,7 @@
     },
     "targets": {
       "default": {
+        "aioconsole": [],
         "grpcio": [],
         "grpcio-tools": [
           "grpcio",
@@ -43,5 +51,5 @@
       }
     }
   },
-  "invalidationHash": "0f4afbc361e9267ae254d1ffac299a3414ec14eacd00037f69896a145693cb2d"
+  "invalidationHash": "eea4cbab3d64bc21e9536dd4b3a5e716650a101611d8c5c2a7fcbead55e84f8c"
 }
