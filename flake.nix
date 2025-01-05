@@ -49,7 +49,7 @@
           };
 
           # NOTE: to generate python lock file, run:
-          #   nix run .#pyprojectMessengerGrpc.lock
+          #   nix run .#pymessenger-grpc.lock
           packages = {
             pymessenger-grpc = inputs.dream2nix.lib.evalModules {
               packageSets.nixpkgs = pkgs';

@@ -1,24 +1,43 @@
 from . import chat_service_pb2 as cs_structs
-from . import chat_service_pb2_grpc as cs_services
 
 
 class ChatClient:
-    def connect(self, stub, user, room):
+    def __init__(self, queue):
+        self.queue = queue
+        self.ok = True
+
+    async def connect(self, stub, user, room):
         connect_request = cs_structs.ConnectRequest(room=room, user=user)
-        response = stub.connect(connect_request)
-        print(response.message)
+        try:
+            response = await stub.connect(connect_request)
+            print(response.message)
+        except Exception as e:
+            print(f"Error: {e}")
+            self.ok = False
 
-    def disconnect(self, stub, user, room):
+    async def disconnect(self, stub, user, room):
         disconnect_request = cs_structs.DisconnectRequest(room=room, user=user)
-        stub.disconnect(disconnect_request)
+        try:
+            await stub.disconnect(disconnect_request)
+            print(f"{user} disconnected from {room}")
+        except Exception as e:
+            print(f"Error: {e}")
+            self.ok = False
 
-    def sendMessage(self, stub, user, room):
-        while True:
-            message = input("> ")
-            chat_message = cs_structs.ChatMessage(room=room, user=user, message=message)
-            stub.sendMessage(chat_message)
+    async def sendMessage(self, stub, user, room, text):
+        try:
+            chat_message = cs_structs.ChatMessage(room=room, user=user, message=text)
+            await stub.sendMessage(chat_message)
+        except Exception as e:
+            print(f"Error: {e}")
+            self.ok = False
 
-    def receiveMessages(self, stub, room):
+    async def receiveMessages(self, stub, room):
         chat_room = cs_structs.ChatRoom(room=room)
-        for message in stub.receiveMessages(chat_room):
-            print(f"{message.user} in {message.room}: {message.message}")
+        try:
+            # the for loop below represents streaming
+            async for message in stub.receiveMessages(chat_room):
+                await self.queue.put(message)
+        except Exception as e:
+            print(f"Error: {e}")
+            self.ok = False
