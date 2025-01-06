@@ -91,6 +91,7 @@
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
                   cmake --preset debug && cmake --build build/Debug
                   ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
+                  strip-flags.py
                 '';
                 helperT = pkgs'.writeShellScriptBin "T" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
@@ -131,7 +132,7 @@
               in
               ''
                 ${config.pre-commit.installationScript}
-                export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$PATH
+                export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$(pwd)/tools:$PATH
 
                 if [ -n "$WSLPATH" ]; then
                   ${pkgs'.jq}/bin/jq --indent 4 -n '${
