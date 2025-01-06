@@ -23,7 +23,7 @@ class Client:
             user_input = await aioconsole.ainput()
             await client.sendMessage(stub, user, room, user_input)
 
-    async def handleOutput(self, stub, user, room):
+    async def handleOutput(self):
         while not self.stop_event.is_set():
             message = await self.incoming_messages.get()
             print(f"[{message.user} - {message.room}]: {message.message}")
@@ -42,7 +42,7 @@ class Client:
 
             receive_task = asyncio.create_task(client.receiveMessages(stub, room))
             input_task = asyncio.create_task(self.handleInput(client, stub, user, room))
-            output_task = asyncio.create_task(self.handleOutput(stub, user, room))
+            output_task = asyncio.create_task(self.handleOutput())
 
             loop = asyncio.get_running_loop()
             for sig in (signal.SIGINT, signal.SIGTERM):
