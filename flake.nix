@@ -93,7 +93,7 @@
                 '';
                 helperD = pkgs'.writeShellScriptBin "D" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  cmake --preset debug
+                  cmake --preset debug && cmake --build build/Debug
                   ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
                 '';
                 helperT = pkgs'.writeShellScriptBin "T" ''
@@ -115,6 +115,8 @@
               in
               with pkgs'; [
                 grpc
+                protobuf
+                openssl # implicit dependency
 
                 helperB
                 helperD
