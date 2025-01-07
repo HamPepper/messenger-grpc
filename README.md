@@ -18,3 +18,12 @@ GP  # 生成 Python gRPC 代码，如只使用 C++ 可跳过
 B   # 编译 C++ 客户/服务端，如只使用 Python 可跳过
 D   # 可选：生成 C++ 自动补全所需的数据库
 ```
+
+
+## 使用说明
+
+编译后，有如下可执行文件可在开发环境中直接调用：
+
+- `pyserver.py`
+- `pyclient.py`
+- `cppclient`

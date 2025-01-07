@@ -156,7 +156,7 @@ void signalHandler(int signum) {
   std::exit(signum);
 }
 
-int main(int argc, char **argv) {
+int main() {
   std::signal(SIGINT, signalHandler);
 
   gClient = std::make_unique<ChatClient>(grpc::CreateChannel(
