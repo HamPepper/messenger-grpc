@@ -69,3 +69,8 @@ target_link_libraries(messenger-grpc PUBLIC
 
 add_executable(cppclient "src/cppclient.cpp")
 target_link_libraries(cppclient messenger-grpc)
+
+
+install(TARGETS cppclient
+    RUNTIME DESTINATION bin
+)

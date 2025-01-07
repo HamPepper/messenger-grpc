@@ -1,6 +1,6 @@
 { lib, config, dream2nix, ... }:
 let
-  pyproject = lib.importTOML (config.mkDerivation.src + /pyproject.toml);
+  pyproject = lib.importTOML ../pyproject.toml;
 in
 {
   imports = [
@@ -15,7 +15,7 @@ in
 
   mkDerivation = {
     src = lib.cleanSourceWith {
-      src = lib.cleanSource ./.;
+      src = lib.cleanSource ../.;
       filter = name: type:
         !(builtins.any (x: x) [
           (lib.hasSuffix ".nix" name)

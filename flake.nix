@@ -60,7 +60,7 @@
             pymessenger-grpc = inputs.dream2nix.lib.evalModules {
               packageSets.nixpkgs = pkgs';
               modules = [
-                ./pyproject.nix
+                ./nix/pymessenger-grpc.nix
                 {
                   paths.projectRoot = ./.;
                   paths.projectRootFile = "flake.nix";
@@ -68,6 +68,8 @@
                 }
               ];
             };
+
+            cppmessenger-grpc = pkgs'.callPackage ./nix/cppmessenger-grpc.nix { };
           };
 
           devShells.default = pkgs'.mkShell {
