@@ -22,17 +22,16 @@
 
       perSystem = { system, inputs', pkgs', config, lib, ... }:
         let
-          clangFormat = pkgs'.runCommand "clang-format-wrapper" { } ''
+          clangTools18 = pkgs'.llvmPackages_18.clang-tools;
+          clang-format = pkgs'.runCommand "clang-format-wrapper" { } ''
             mkdir -p $out/bin
-            ln -s ${pkgs'.llvmPackages_18.clang-tools}/bin/clang-format $out/bin/clang-format
+            ln -s ${clangTools18}/bin/clang-format $out/bin/clang-format
           '';
 
-          # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/273875
-          llvmPkg = pkgs'.llvmPackages.clang-tools;
-          clangTools = pkgs'.runCommand "clang-tools-wrapper" { } ''
+          clangTools = pkgs'.llvmPackages.clang-tools;
+          clangd = pkgs'.runCommand "clangd-wrapper" { } ''
             mkdir -p $out/bin
-            ln -s ${llvmPkg}/bin/clang-scan-deps $out/bin/clang-scan-deps
-            ln -s ${llvmPkg}/bin/clangd $out/bin/clangd
+            ln -s ${clangTools}/bin/clangd $out/bin/clangd
           '';
         in
         rec {
@@ -44,7 +43,7 @@
             settings.hooks = {
               clang-format =
                 {
-                  package = clangFormat;
+                  package = clang-format;
                   enable = true;
                   types_or = pkgs'.lib.mkForce [ "c++" ];
                 };
@@ -75,13 +74,12 @@
           devShells.default = pkgs'.mkShell {
             name = "messenger-grpc";
 
-            inputsFrom = [ packages.pymessenger-grpc.devShell ];
+            inputsFrom = [
+              packages.pymessenger-grpc.devShell
+              packages.cppmessenger-grpc
+            ];
 
-            nativeBuildInputs = with pkgs'; [
-              cmake
-              ninja
-              clangTools
-            ] ++ config.pre-commit.settings.enabledPackages;
+            nativeBuildInputs = config.pre-commit.settings.enabledPackages;
 
             buildInputs =
               let
@@ -95,11 +93,6 @@
                   ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
                   strip-flags.py
                 '';
-                helperT = pkgs'.writeShellScriptBin "T" ''
-                  if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  cmake --preset debug && cmake --build build/Debug
-                  ctest --test-dir build/Debug --output-on-failure
-                '';
                 helperGP = pkgs'.writeShellScriptBin "GP" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
                   python3 -m grpc_tools.protoc \
@@ -110,26 +103,20 @@
                     proto/messenger_grpc/*.proto
                 '';
 
-                debugTools = (with pkgs'; if stdenv.isLinux then [ gdb ] else [ lldb ]);
+                debugTools = (with pkgs';
+                  if stdenv.hostPlatform.isLinux
+                  then [ gdb ] else [ lldb ]
+                );
               in
-              with pkgs'; [
-                grpc
-                protobuf
-                openssl # implicit dependency
-
-                helperB
-                helperD
-                helperT
-                helperGP
-              ] ++ debugTools;
+              [ helperB helperD helperGP clangd ] ++ debugTools;
 
             hardeningDisable = [ "fortify" ];
 
             shellHook =
               let
                 vscodeSettings = {
-                  clangd.path = "${clangTools}/bin/clangd";
-                  clang-format.executable = "${clangFormat}/bin/clang-format";
+                  clangd.path = "${clangd}/bin/clangd";
+                  clang-format.executable = "${clang-format}/bin/clang-format";
                 };
               in
               ''
