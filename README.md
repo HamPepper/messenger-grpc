@@ -1,4 +1,4 @@
-# messenger-grpc
+# messenger-grpc [![github CI](https://github.com/HamPepper/messenger-grpc/actions/workflows/main.yml/badge.svg)](https://github.com/HamPepper/messenger-grpc/actions?query=workflow%3ACI)
 
 一个基于 gRPC 的简易命令行网络聊天程序。
 

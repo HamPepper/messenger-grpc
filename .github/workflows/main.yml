@@ -1,0 +1,21 @@
+name: "CI"
+
+on:
+    pull_request:
+    push:
+        branches:
+            - master
+
+jobs:
+    build:
+        if: "!contains(github.event.head_commit.message, 'skip ci')"
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: DeterminateSystems/nix-installer-action@v16
+            - run: nix build ".#pymessenger-grpc"
+            - run: nix build ".#cppmessenger-grpc"
+            - run: nix develop -c pre-commit run --all-files
