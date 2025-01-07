@@ -1,4 +1,3 @@
-#include <atomic>
 #include <csignal>
 #include <format>
 #include <iostream>
@@ -6,6 +5,7 @@
 #include <string>
 #include <thread>
 
+#include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
 
 #include "proto/messenger_grpc/chat_service.grpc.pb.h"
@@ -30,20 +30,26 @@ constexpr std::string PORT = "23333";
 
 // global variables
 class ChatClient;
-ChatClient *gClient = nullptr;
-std::string gRoom;
-std::string gUser;
-std::atomic<bool> gRunning = false;
+std::unique_ptr<ChatClient> gClient;
 
 class ChatClient {
+private:
+  std::unique_ptr<ChatService::Stub> m_stub;
+  std::string m_user;
+  std::string m_room;
+
+  ClientContext m_receiveMessagesContext;
+  std::unique_ptr<std::thread> m_receiveMessagesThread;
+
 public:
   ChatClient(std::shared_ptr<Channel> channel)
-      : m_stub(ChatService::NewStub(channel)) {}
+      : m_stub(ChatService::NewStub(channel)), m_user(), m_room(),
+        m_receiveMessagesContext(), m_receiveMessagesThread(nullptr) {}
 
-  bool connect(const std::string &user, const std::string &room) {
+  bool connect() {
     ConnectRequest request;
-    request.set_user(user);
-    request.set_room(room);
+    request.set_user(m_user);
+    request.set_room(m_room);
 
     ConnectResponse response;
     ClientContext context;
@@ -58,28 +64,27 @@ public:
     }
   }
 
-  void disconnect(const std::string &user, const std::string &room) {
+  void disconnect() {
     DisconnectRequest request;
-    request.set_user(user);
-    request.set_room(room);
+    request.set_user(m_user);
+    request.set_room(m_room);
 
     Empty response;
     ClientContext context;
 
     Status status = m_stub->disconnect(&context, request, &response);
     if (status.ok()) {
-      std::cout << std::format("{} disconnected from {}", user, room)
+      std::cout << std::format("{} disconnected from {}", m_user, m_room)
                 << std::endl;
     } else {
       std::cout << "disconnect RPC failed." << std::endl;
     }
   }
 
-  void sendMessage(const std::string &room, const std::string &user,
-                   const std::string &message) {
+  void sendMessage(const std::string &message) {
     ChatMessage request;
-    request.set_room(room);
-    request.set_user(user);
+    request.set_room(m_room);
+    request.set_user(m_user);
     request.set_message(message);
 
     Empty response;
@@ -91,79 +96,72 @@ public:
     }
   }
 
-  void receiveMessages(const std::string &room) {
+  void receiveMessages() {
     ChatRoom request;
-    request.set_room(room);
+    request.set_room(m_room);
 
-    ClientContext context;
     std::unique_ptr<ClientReader<ChatMessage>> reader(
-        m_stub->receiveMessages(&context, request));
+        m_stub->receiveMessages(&m_receiveMessagesContext, request));
 
     ChatMessage message;
-    while (reader->Read(&message) && gRunning) {
+    while (reader->Read(&message)) {
       std::cout << std::format("[{} - {}]: {}", message.user(), message.room(),
                                message.message())
                 << std::endl;
     }
 
-    if (!gRunning) {
-      context.TryCancel();
-    }
-
     Status status = reader->Finish();
-    if (!status.ok() && gRunning) {
+    if (!status.ok()) {
       std::cout << "receiveMessages RPC failed." << std::endl;
     }
   }
 
-private:
-  std::unique_ptr<ChatService::Stub> m_stub;
+  void run() {
+    std::cout << "Enter your username: ";
+    std::getline(std::cin, m_user);
+    std::cout << "Enter room name: ";
+    std::getline(std::cin, m_room);
+
+    if (!connect()) {
+      return;
+    }
+
+    m_receiveMessagesThread =
+        std::make_unique<std::thread>(&ChatClient::receiveMessages, this);
+
+    std::string message;
+    while (true) {
+      std::getline(std::cin, message);
+      if (message == "/quit") {
+        break;
+      }
+      sendMessage(message);
+    }
+
+    stop();
+  }
+
+  void stop() {
+    disconnect();
+    m_receiveMessagesContext.TryCancel();
+
+    if (m_receiveMessagesThread.get() != nullptr) {
+      m_receiveMessagesThread->join();
+    }
+  }
 };
 
 void signalHandler(int signum) {
-  if (gRunning && gClient) {
-    gRunning = false;
-    gClient->disconnect(gUser, gRoom);
-  }
+  gClient->stop();
   std::exit(signum);
-}
-
-void handleInput(ChatClient &client, const std::string &user,
-                 const std::string &room) {
-  std::string message;
-  while (true) {
-    std::getline(std::cin, message);
-    if (message == "/quit") {
-      break;
-    }
-    client.sendMessage(room, user, message);
-  }
 }
 
 int main(int argc, char **argv) {
   std::signal(SIGINT, signalHandler);
 
-  ChatClient client(grpc::CreateChannel(std::format("{}:{}", HOST, PORT),
-                                        grpc::InsecureChannelCredentials()));
-  gClient = &client;
-
-  std::cout << "Enter your username: ";
-  std::getline(std::cin, gUser);
-  std::cout << "Enter room name: ";
-  std::getline(std::cin, gRoom);
-
-  if (!client.connect(gUser, gRoom)) {
-    return 1;
-  }
-
-  gRunning = true;
-  std::thread receiveThread(&ChatClient::receiveMessages, &client, gRoom);
-  handleInput(client, gUser, gRoom);
-
-  gRunning = false;
-  client.disconnect(gUser, gRoom);
-
-  receiveThread.join();
+  gClient = std::make_unique<ChatClient>(grpc::CreateChannel(
+      std::format("{}:{}", HOST, PORT), grpc::InsecureChannelCredentials()));
+  gClient->run();
 
   return 0;
 }
