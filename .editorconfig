@@ -1,0 +1,21 @@
+root = true
+
+# let's always use lf eol!
+[*]
+end_of_line = lf
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{cpp,h,hpp}]
+indent_size = 2
+
+[*.nix]
+indent_size = 2
+
+[*.md]
+indent_size = unset
+
+
+[lock.*]
+insert_final_newline = unset

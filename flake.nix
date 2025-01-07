@@ -20,8 +20,22 @@
 
       systems = [ "x86_64-linux" /* "x86_64-darwin" */ "aarch64-darwin" ];
 
-      perSystem =
-        { system, inputs', pkgs', config, lib, ... }: rec {
+      perSystem = { system, inputs', pkgs', config, lib, ... }:
+        let
+          clangFormat = pkgs'.runCommand "clang-format-wrapper" { } ''
+            mkdir -p $out/bin
+            ln -s ${pkgs'.llvmPackages_18.clang-tools}/bin/clang-format $out/bin/clang-format
+          '';
+
+          # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/273875
+          llvmPkg = pkgs'.llvmPackages.clang-tools;
+          clangTools = pkgs'.runCommand "clang-tools-wrapper" { } ''
+            mkdir -p $out/bin
+            ln -s ${llvmPkg}/bin/clang-scan-deps $out/bin/clang-scan-deps
+            ln -s ${llvmPkg}/bin/clangd $out/bin/clangd
+          '';
+        in
+        rec {
           _module.args.pkgs' = import nixpkgs { inherit system; };
 
           pre-commit = {
@@ -29,14 +43,6 @@
             settings.src = ./.;
             settings.hooks = {
               clang-format =
-                let
-                  # pinpoint a specific version of clang-format
-                  llvmPkg = pkgs'.llvmPackages_18.clang-tools;
-                  clangFormat = pkgs'.runCommand "clang-format-wrapper" { } ''
-                    mkdir -p $out/bin
-                    ln -s ${llvmPkg}/bin/clang-format $out/bin/clang-format
-                  '';
-                in
                 {
                   package = clangFormat;
                   enable = true;
@@ -69,21 +75,11 @@
 
             inputsFrom = [ packages.pymessenger-grpc.devShell ];
 
-            # FIXME: workaround for https://github.com/NixOS/nixpkgs/issues/273875
-            nativeBuildInputs =
-              let
-                llvmPkg = pkgs'.llvmPackages.clang-tools;
-                clangTools = pkgs'.runCommand "clang-tools-wrapper" { } ''
-                  mkdir -p $out/bin
-                  ln -s ${llvmPkg}/bin/clang-scan-deps $out/bin/clang-scan-deps
-                  ln -s ${llvmPkg}/bin/clangd $out/bin/clangd
-                '';
-              in
-              with pkgs'; [
-                cmake
-                ninja
-                clangTools
-              ] ++ config.pre-commit.settings.enabledPackages;
+            nativeBuildInputs = with pkgs'; [
+              cmake
+              ninja
+              clangTools
+            ] ++ config.pre-commit.settings.enabledPackages;
 
             buildInputs =
               let
@@ -93,8 +89,9 @@
                 '';
                 helperD = pkgs'.writeShellScriptBin "D" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  cmake --preset debug
+                  cmake --preset debug && cmake --build build/Debug
                   ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
+                  strip-flags.py
                 '';
                 helperT = pkgs'.writeShellScriptBin "T" ''
                   if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
@@ -115,6 +112,8 @@
               in
               with pkgs'; [
                 grpc
+                protobuf
+                openssl # implicit dependency
 
                 helperB
                 helperD
@@ -124,10 +123,23 @@
 
             hardeningDisable = [ "fortify" ];
 
-            shellHook = ''
-              ${config.pre-commit.installationScript}
-              export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$PATH
-            '';
+            shellHook =
+              let
+                vscodeSettings = {
+                  clangd.path = "${clangTools}/bin/clangd";
+                  clang-format.executable = "${clangFormat}/bin/clang-format";
+                };
+              in
+              ''
+                ${config.pre-commit.installationScript}
+                export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$(pwd)/tools:$PATH
+
+                if [ -n "$WSLPATH" ]; then
+                  ${pkgs'.jq}/bin/jq --indent 4 -n '${
+                    builtins.toJSON vscodeSettings
+                  }' > .vscode/settings.json
+                fi
+              '';
           };
         };
     });
