@@ -12,26 +12,24 @@
     dream2nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-parts, git-hooks, ... } @ inputs:
-    flake-parts.lib.mkFlake { inherit inputs; } ({ getSystem, ... }: {
-      imports = [
-        git-hooks.flakeModule
-      ];
+  outputs = { self, nixpkgs, flake-parts, git-hooks, dream2nix } @ inputs:
+    flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
+      imports = [ git-hooks.flakeModule ];
 
       systems = [ "x86_64-linux" /* "x86_64-darwin" */ "aarch64-darwin" ];
 
-      perSystem = { system, inputs', pkgs', config, lib, ... }:
+      perSystem = { config, system, pkgs', lib, ... }:
         let
-          clangTools18 = pkgs'.llvmPackages_18.clang-tools;
+          clang-tools-18 = pkgs'.llvmPackages_18.clang-tools;
           clang-format = pkgs'.runCommand "clang-format-wrapper" { } ''
             mkdir -p $out/bin
-            ln -s ${clangTools18}/bin/clang-format $out/bin/clang-format
+            ln -s ${clang-tools-18}/bin/clang-format $out/bin/clang-format
           '';
 
-          clangTools = pkgs'.llvmPackages.clang-tools;
+          clang-tools = pkgs'.llvmPackages.clang-tools;
           clangd = pkgs'.runCommand "clangd-wrapper" { } ''
             mkdir -p $out/bin
-            ln -s ${clangTools}/bin/clangd $out/bin/clangd
+            ln -s ${clang-tools}/bin/clangd $out/bin/clangd
           '';
         in
         rec {
@@ -51,24 +49,6 @@
               nixpkgs-fmt.enable = true;
               black.enable = true;
             };
-          };
-
-          # NOTE: to generate python lock file, run:
-          #   nix run .#pymessenger-grpc.lock
-          packages = {
-            pymessenger-grpc = inputs.dream2nix.lib.evalModules {
-              packageSets.nixpkgs = pkgs';
-              modules = [
-                ./nix/pymessenger-grpc.nix
-                {
-                  paths.projectRoot = ./.;
-                  paths.projectRootFile = "flake.nix";
-                  paths.package = ./.;
-                }
-              ];
-            };
-
-            cppmessenger-grpc = pkgs'.callPackage ./nix/cppmessenger-grpc.nix { };
           };
 
           devShells.default = pkgs'.mkShell {
@@ -129,6 +109,24 @@
                   }' > .vscode/settings.json
                 fi
               '';
+          };
+
+          # NOTE: to generate python lock file, run:
+          #   nix run .#pymessenger-grpc.lock
+          packages = {
+            pymessenger-grpc = dream2nix.lib.evalModules {
+              packageSets.nixpkgs = pkgs';
+              modules = [
+                ./nix/pymessenger-grpc.nix
+                {
+                  paths.projectRoot = ./.;
+                  paths.projectRootFile = "flake.nix";
+                  paths.package = ./.;
+                }
+              ];
+            };
+
+            cppmessenger-grpc = pkgs'.callPackage ./nix/cppmessenger-grpc.nix { };
           };
         };
     });
