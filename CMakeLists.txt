@@ -67,7 +67,7 @@ target_link_libraries(messenger-grpc PUBLIC
 # executables #
 ###############
 
-add_executable(cppclient "src/cppclient.cpp")
+add_executable(cppclient "cpp_src/cppclient.cpp")
 target_link_libraries(cppclient messenger-grpc)
 
 
