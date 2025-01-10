@@ -1,17 +1,8 @@
-{ lib, config, dream2nix, ... }:
-let
-  pyproject = lib.importTOML ../pyproject.toml;
-in
+{ lib, dream2nix, ... }:
 {
   imports = [
-    dream2nix.modules.dream2nix.pip
+    dream2nix.modules.dream2nix.WIP-python-pdm
   ];
-
-  deps = { nixpkgs, ... }: {
-    python = nixpkgs.python3;
-  };
-
-  inherit (pyproject.project) name version;
 
   mkDerivation = {
     src = lib.cleanSourceWith {
@@ -35,16 +26,6 @@ in
     ];
   };
 
-  paths.lockFile = "lock.${config.deps.stdenv.system}.json";
-  pip = {
-    # Setting editables.$pkg to a relative or absolute path, as a string, will
-    # link this path as an editable install to .dream2nix/editables in
-    # devShells. The root package is always installed as editable.
-    # editables.charset-normalizer = "/home/my-user/src/charset-normalizer";
-
-    requirementsList =
-      pyproject.build-system.requires or [ ]
-      ++ pyproject.project.dependencies;
-    flattenDependencies = true;
-  };
+  pdm.lockfile = ../pdm.lock;
+  pdm.pyproject = ../pyproject.toml;
 }
