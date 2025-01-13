@@ -125,7 +125,7 @@
                     then [ gdb ] else [ lldb ]
                   );
                 in
-                [ helperB helperD helperGP clangd pkgs'.uv ] ++ debugTools;
+                [ helperB helperD helperGP clangd pkgs'.uv pkgs'.coreutils ] ++ debugTools;
 
               hardeningDisable = [ "fortify" ];
 

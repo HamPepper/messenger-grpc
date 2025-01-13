@@ -21,3 +21,4 @@ jobs:
             - run: nix develop -c pre-commit run --all-files
             - run: nix build ".#cppmessenger-grpc"
             - run: nix build ".#pymessenger-grpc"
+            - run: nix develop -c timeout 3s ./result/bin/pyserver.py || true
