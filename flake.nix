@@ -39,16 +39,14 @@
 
       perSystem = { config, system, pkgs', lib, ... }:
         let
-          clang-tools-18 = pkgs'.llvmPackages_18.clang-tools;
-          clang-format = pkgs'.runCommand "clang-format-wrapper" { } ''
-            mkdir -p $out/bin
-            ln -s ${clang-tools-18}/bin/clang-format $out/bin/clang-format
-          '';
-
           clang-tools = pkgs'.llvmPackages.clang-tools;
           clangd = pkgs'.runCommand "clangd-wrapper" { } ''
             mkdir -p $out/bin
             ln -s ${clang-tools}/bin/clangd $out/bin/clangd
+          '';
+          clang-format = pkgs'.runCommand "clang-format-wrapper" { } ''
+            mkdir -p $out/bin
+            ln -s ${clang-tools}/bin/clang-format $out/bin/clang-format
           '';
 
           python = pkgs'.python3;
