@@ -1,5 +1,5 @@
 [build-system]
-requires = [ "setuptools", "grpcio-tools ~= 1.68.1" ]
+requires = [ "setuptools", "grpcio-tools" ]
 build-backend = "setuptools.build_meta"
 
 
@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 
 dependencies = [
     "grpcio ~= 1.68.1",
+    "grpcio-tools ~= 1.68.1",
     "aioconsole  ~= 0.8.1",
 ]
 

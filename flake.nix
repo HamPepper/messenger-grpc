@@ -8,14 +8,33 @@
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
 
-    dream2nix.url = "github:nix-community/dream2nix";
-    dream2nix.inputs.nixpkgs.follows = "nixpkgs";
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-parts, git-hooks, dream2nix } @ inputs:
+  outputs = { self, nixpkgs, flake-parts, git-hooks, ... } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
-      imports = [ git-hooks.flakeModule ];
+      imports = [
+        git-hooks.flakeModule
+        ./nix/uv.nix
+      ];
 
+      debug = true;
       systems = [ "x86_64-linux" /* "x86_64-darwin" */ "aarch64-darwin" ];
 
       perSystem = { config, system, pkgs', lib, ... }:
@@ -31,6 +50,18 @@
             mkdir -p $out/bin
             ln -s ${clang-tools}/bin/clangd $out/bin/clangd
           '';
+
+          python = pkgs'.python3;
+          pythonSet = (pkgs'.callPackage inputs.pyproject-nix.build.packages {
+            inherit python;
+          }).overrideScope
+            (
+              lib.composeManyExtensions [
+                inputs.pyproject-build-systems.overlays.default
+                self.overlays.pyproject
+                self.overlays.pyprojectOverrides
+              ]
+            );
         in
         rec {
           _module.args.pkgs' = import nixpkgs { inherit system; };
@@ -51,80 +82,92 @@
             };
           };
 
-          devShells.default = pkgs'.mkShell {
-            name = "messenger-grpc";
+          devShells.default =
+            let
+              editableOverlay = self.workspace.mkEditablePyprojectOverlay {
+                root = "$REPO_ROOT";
+                #members = [ "messenger_grpc" "grpcio-tools" "grpcio" ];
+              };
+              editablePythonSet = pythonSet.overrideScope editableOverlay;
+              virtualenv = editablePythonSet.mkVirtualEnv "messenger-grpc-dev-env" self.workspace.deps.all;
+            in
+            pkgs'.mkShell {
+              name = "messenger-grpc";
 
-            inputsFrom = [
-              packages.pymessenger-grpc.devShell
-              packages.cppmessenger-grpc
-            ];
+              inputsFrom = [ packages.cppmessenger-grpc ];
+              packages = [ virtualenv ];
 
-            nativeBuildInputs = config.pre-commit.settings.enabledPackages;
+              nativeBuildInputs = config.pre-commit.settings.enabledPackages;
 
-            buildInputs =
-              let
-                helperB = pkgs'.writeShellScriptBin "B" ''
-                  if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  cmake --preset debug && cmake --build build/Debug
+              buildInputs =
+                let
+                  helperB = pkgs'.writeShellScriptBin "B" ''
+                    if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
+                    cmake --preset debug && cmake --build build/Debug
+                  '';
+                  helperD = pkgs'.writeShellScriptBin "D" ''
+                    if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
+                    cmake --preset debug && cmake --build build/Debug
+                    ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
+                    strip-flags.py
+                  '';
+                  helperGP = pkgs'.writeShellScriptBin "GP" ''
+                    if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
+                    python3 -m grpc_tools.protoc \
+                      --proto_path=proto \
+                      --python_out=. \
+                      --grpc_python_out=. \
+                      --pyi_out=. \
+                      proto/messenger_grpc/*.proto
+                  '';
+
+                  debugTools = (with pkgs';
+                    if stdenv.hostPlatform.isLinux
+                    then [ gdb ] else [ lldb ]
+                  );
+                in
+                [ helperB helperD helperGP clangd pkgs'.uv ] ++ debugTools;
+
+              hardeningDisable = [ "fortify" ];
+
+              shellHook =
+                let
+                  vscodeSettings = {
+                    clangd.path = "${clangd}/bin/clangd";
+                    clang-format.executable = "${clang-format}/bin/clang-format";
+                  };
+                in
+                ''
+                  ${config.pre-commit.installationScript}
+                  unset PYTHONPATH
+                  export REPO_ROOT=$(git rev-parse --show-toplevel)
+                  export PATH=$REPO_ROOT/build/Debug:$REPO_ROOT/scripts:$(pwd)/tools:$PATH
+
+                  if [ -n "$WSLPATH" ]; then
+                    ${pkgs'.jq}/bin/jq --indent 4 -n '${
+                      builtins.toJSON vscodeSettings
+                    }' > .vscode/settings.json
+                  fi
                 '';
-                helperD = pkgs'.writeShellScriptBin "D" ''
-                  if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  cmake --preset debug && cmake --build build/Debug
-                  ${pkgs'.compdb}/bin/compdb -p build/Debug/ list > compile_commands.json
-                  strip-flags.py
-                '';
-                helperGP = pkgs'.writeShellScriptBin "GP" ''
-                  if [ -n "$DIRENV_DIR" ]; then cd ''${DIRENV_DIR:1}; fi
-                  python3 -m grpc_tools.protoc \
-                    --proto_path=proto \
-                    --python_out=. \
-                    --grpc_python_out=. \
-                    --pyi_out=. \
-                    proto/messenger_grpc/*.proto
-                '';
 
-                debugTools = (with pkgs';
-                  if stdenv.hostPlatform.isLinux
-                  then [ gdb ] else [ lldb ]
-                );
-              in
-              [ helperB helperD helperGP clangd ] ++ debugTools;
-
-            hardeningDisable = [ "fortify" ];
-
-            shellHook =
-              let
-                vscodeSettings = {
-                  clangd.path = "${clangd}/bin/clangd";
-                  clang-format.executable = "${clang-format}/bin/clang-format";
-                };
-              in
-              ''
-                ${config.pre-commit.installationScript}
-                export PATH=$(pwd)/build/Debug:$(pwd)/scripts:$(pwd)/tools:$PATH
-
-                if [ -n "$WSLPATH" ]; then
-                  ${pkgs'.jq}/bin/jq --indent 4 -n '${
-                    builtins.toJSON vscodeSettings
-                  }' > .vscode/settings.json
-                fi
-              '';
-          };
-
-          # NOTE: to generate python lock file, run:
-          #   nix run .#pymessenger-grpc.lock
-          packages = {
-            pymessenger-grpc = dream2nix.lib.evalModules {
-              packageSets.nixpkgs = pkgs';
-              modules = [
-                ./nix/pymessenger-grpc.nix
-                {
-                  paths.projectRoot = ./.;
-                  paths.projectRootFile = "flake.nix";
-                  paths.package = ./.;
-                }
-              ];
+              env = {
+                UV_NO_SYNC = "1";
+                UV_PYTHON_DOWNLOADS = "never";
+                UV_PYTHON = "${virtualenv}/bin/python";
+              } // lib.optionalAttrs pkgs'.stdenv.isLinux {
+                LD_LIBRARY_PATH = lib.makeLibraryPath pkgs'.pythonManylinuxPackages.manylinux1;
+              };
             };
+
+          packages = {
+            uv-lock = pkgs'.writeShellScriptBin "uv-lock" ''
+              export UV_PYTHON="${pkgs'.python3}/bin/python";
+              export UV_PYTHON_DOWNLOADS="never";
+              ${pkgs'.uv}/bin/uv lock
+            '';
+
+            pymessenger-grpc = pythonSet.mkVirtualEnv "py-messenger-grpc"
+              self.workspace.deps.default;
 
             cppmessenger-grpc = pkgs'.callPackage ./nix/cppmessenger-grpc.nix { };
           };
