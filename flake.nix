@@ -70,12 +70,11 @@
             check.enable = true;
             settings.src = ./.;
             settings.hooks = {
-              clang-format =
-                {
-                  package = clang-format;
-                  enable = true;
-                  types_or = pkgs'.lib.mkForce [ "c++" ];
-                };
+              clang-format = {
+                package = clang-format;
+                enable = true;
+                types_or = pkgs'.lib.mkForce [ "c++" ];
+              };
               editorconfig-checker.enable = true;
               nixpkgs-fmt.enable = true;
               black.enable = true;
@@ -154,8 +153,6 @@
                 UV_NO_SYNC = "1";
                 UV_PYTHON_DOWNLOADS = "never";
                 UV_PYTHON = "${virtualenv}/bin/python";
-              } // lib.optionalAttrs pkgs'.stdenv.isLinux {
-                LD_LIBRARY_PATH = lib.makeLibraryPath pkgs'.pythonManylinuxPackages.manylinux1;
               };
             };
 
