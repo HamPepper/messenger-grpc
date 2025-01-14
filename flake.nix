@@ -123,7 +123,7 @@
                     then [ gdb ] else [ lldb ]
                   );
                 in
-                [ helperB helperD helperGP clangd pkgs'.uv pkgs'.coreutils ] ++ debugTools;
+                with pkgs'; [ helperB helperD helperGP clangd uv coreutils ] ++ debugTools;
 
               hardeningDisable = [ "fortify" ];
 
@@ -161,7 +161,7 @@
               ${pkgs'.uv}/bin/uv lock
             '';
 
-            pymessenger-grpc = pythonSet.mkVirtualEnv "py-messenger-grpc"
+            pymessenger-grpc = pythonSet.mkVirtualEnv "pymessenger-grpc"
               self.workspace.deps.default;
 
             cppmessenger-grpc = pkgs'.callPackage ./nix/cppmessenger-grpc.nix { };
