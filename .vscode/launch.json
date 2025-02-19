@@ -18,6 +18,22 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "pyserver",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/pyserver.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "pyclient",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/pyclient.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ],
     "version": "2.0.0"
